@@ -1,0 +1,5 @@
+{
+  "name": "PackGenius AI",
+  "description": "An intelligent packaging assistant that optimizes box selection based on product dimensions, safety gaps, and existing inventory, powered by Gemini AI for material recommendations.",
+  "requestFramePermissions": []
+}
