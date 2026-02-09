@@ -1,4 +1,4 @@
-import React, { useState, useRef, memo } from 'react';
+import { useState, useRef } from 'react';
 import { Dimensions } from '@/types';
 
 interface Props {
@@ -8,67 +8,60 @@ interface Props {
   t: { dragToRotate: string };
 }
 
-interface CubeProps {
-  dims: Dimensions;
-  color: string;
-  scale: number;
-  isWireframe?: boolean;
-  opacity?: number;
-}
-
-const Cube = memo(function Cube({ dims, color, scale, isWireframe = false, opacity = 1 }: CubeProps) {
-  const { length: x, height: y, width: z } = dims;
-  const sx = x * scale, sy = y * scale, sz = z * scale;
-  const style: React.CSSProperties = { position: 'absolute', width: 0, height: 0, transformStyle: 'preserve-3d', transform: 'translate3d(0, 0, 0)', left: '50%', top: '50%' }; // 3D容器样式
-  const faceStyle = (transform: string, w: number, h: number): React.CSSProperties => ({
-    position: 'absolute', width: w, height: h, transform, marginLeft: -w / 2, marginTop: -h / 2,
-    backgroundColor: isWireframe ? `rgba(${color}, 0.05)` : `rgba(${color}, ${opacity})`,
-    border: isWireframe ? `2px solid rgba(${color}, 0.6)` : `1px solid rgba(0,0,0,0.1)`,
-    boxShadow: isWireframe ? 'none' : 'inset 0 0 10px rgba(0,0,0,0.1)',
-    backfaceVisibility: isWireframe ? 'visible' : 'hidden', transition: 'all 0.3s ease', pointerEvents: 'none',
-  });
-  return (
-    <div style={style}>
-      <div style={faceStyle(`translateZ(${sz / 2}px)`, sx, sy)} />
-      <div style={faceStyle(`rotateY(180deg) translateZ(${sz / 2}px)`, sx, sy)} />
-      <div style={faceStyle(`rotateY(90deg) translateZ(${sx / 2}px)`, sz, sy)} />
-      <div style={faceStyle(`rotateY(-90deg) translateZ(${sx / 2}px)`, sz, sy)} />
-      <div style={faceStyle(`rotateX(90deg) translateZ(${sy / 2}px)`, sx, sz)} />
-      <div style={faceStyle(`rotateX(-90deg) translateZ(${sy / 2}px)`, sx, sz)} />
-    </div>
-  );
-});
-
-export const BoxVisualizer: React.FC<Props> = ({ box, product, isCustom, t }) => {
+export const BoxVisualizer = ({ box, product, isCustom, t }: Props) => {
   const [rotation, setRotation] = useState({ x: -25, y: 45 });
   const [isDragging, setIsDragging] = useState(false);
   const lastMousePos = useRef({ x: 0, y: 0 });
-  const maxDim = Math.max(box.length, box.width, box.height);
-  const scale = maxDim > 0 ? 140 / maxDim : 1;
+  const scale = 140 / Math.max(box.length, box.width, box.height, 1);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     setIsDragging(true);
     lastMousePos.current = { x: e.clientX, y: e.clientY };
   };
+
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!isDragging) return;
-    const deltaX = e.clientX - lastMousePos.current.x;
-    const deltaY = e.clientY - lastMousePos.current.y;
+    const dx = e.clientX - lastMousePos.current.x;
+    const dy = e.clientY - lastMousePos.current.y;
     setRotation(prev => ({
-      x: Math.max(-90, Math.min(90, prev.x - deltaY * 0.5)),
-      y: prev.y + deltaX * 0.5
+      x: Math.max(-90, Math.min(90, prev.x - dy * 0.5)),
+      y: prev.y + dx * 0.5
     }));
     lastMousePos.current = { x: e.clientX, y: e.clientY };
   };
+
   const handleMouseUp = () => setIsDragging(false);
+
+  // 渲染立方体
+  const renderCube = (dims: Dimensions, color: string, wireframe = false, opacity = 1) => {
+    const sx = dims.length * scale, sy = dims.height * scale, sz = dims.width * scale;
+    const baseStyle = { position: 'absolute' as const, width: 0, height: 0, transformStyle: 'preserve-3d' as const, left: '50%', top: '50%' };
+    const face = (transform: string, w: number, h: number) => ({
+      position: 'absolute' as const, width: w, height: h, transform, marginLeft: -w / 2, marginTop: -h / 2,
+      backgroundColor: wireframe ? `rgba(${color}, 0.05)` : `rgba(${color}, ${opacity})`,
+      border: wireframe ? `2px solid rgba(${color}, 0.6)` : `1px solid rgba(0,0,0,0.1)`,
+      backfaceVisibility: wireframe ? 'visible' as const : 'hidden' as const,
+    });
+    return (
+      <div style={baseStyle}>
+        <div style={face(`translateZ(${sz / 2}px)`, sx, sy)} />
+        <div style={face(`rotateY(180deg) translateZ(${sz / 2}px)`, sx, sy)} />
+        <div style={face(`rotateY(90deg) translateZ(${sx / 2}px)`, sz, sy)} />
+        <div style={face(`rotateY(-90deg) translateZ(${sx / 2}px)`, sz, sy)} />
+        <div style={face(`rotateX(90deg) translateZ(${sy / 2}px)`, sx, sz)} />
+        <div style={face(`rotateX(-90deg) translateZ(${sy / 2}px)`, sx, sz)} />
+      </div>
+    );
+  };
 
   return (
     <div className="w-full h-[320px] bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 cursor-grab active:cursor-grabbing relative overflow-hidden flex items-center justify-center"
-      onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp} style={{ perspective: '1200px' }}>
+      onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}
+      style={{ perspective: '1200px' }}>
       <div className="absolute top-3 left-4 text-xs font-medium text-slate-400 select-none bg-white/50 dark:bg-slate-800/50 px-2 py-1 rounded backdrop-blur-sm z-10">{t.dragToRotate}</div>
       <div style={{ position: 'relative', transformStyle: 'preserve-3d', transform: `rotateX(${rotation.x}deg) rotateY(${rotation.y}deg)`, transition: isDragging ? 'none' : 'transform 0.2s ease-out' }}>
-        <Cube dims={product} color="99, 102, 241" scale={scale} opacity={0.9} />
-        <Cube dims={box} color={isCustom ? "245, 158, 11" : "16, 185, 129"} scale={scale} isWireframe={true} />
+        {renderCube(product, '99, 102, 241', false, 0.9)}
+        {renderCube(box, isCustom ? '245, 158, 11' : '16, 185, 129', true)}
       </div>
     </div>
   );
