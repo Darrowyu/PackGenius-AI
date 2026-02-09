@@ -12,11 +12,21 @@ export class AppError extends Error {
   }
 }
 
+const logError = (error: unknown, ctx?: string) => {
+  const timestamp = new Date().toISOString();
+  const prefix = ctx ? `[${ctx}]` : '';
+  if (error instanceof Error) {
+    process.stderr.write(`${timestamp} ERROR ${prefix} ${error.message}\n`);
+  } else {
+    process.stderr.write(`${timestamp} ERROR ${prefix} ${String(error)}\n`);
+  }
+};
+
 export const errorHandler = async (c: Context, next: Next) => {
   try {
     await next();
   } catch (error) {
-    console.error('Error:', error);
+    logError(error, 'HTTP'); // 记录错误到stderr
 
     if (error instanceof ZodError) {
       return c.json(
